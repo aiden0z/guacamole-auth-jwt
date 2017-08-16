@@ -5,10 +5,10 @@ import com.google.inject.Inject;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import org.glyptodon.guacamole.GuacamoleException;
-import org.glyptodon.guacamole.environment.Environment;
-import org.glyptodon.guacamole.properties.StringGuacamoleProperty;
-import org.glyptodon.guacamole.protocol.GuacamoleConfiguration;
+import org.apache.guacamole.GuacamoleException;
+import org.apache.guacamole.environment.Environment;
+import org.apache.guacamole.properties.StringGuacamoleProperty;
+import org.apache.guacamole.protocol.GuacamoleConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

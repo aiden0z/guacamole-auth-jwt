@@ -8,9 +8,9 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.impl.DefaultClaims;
-import org.glyptodon.guacamole.environment.Environment;
-import org.glyptodon.guacamole.net.auth.Credentials;
-import org.glyptodon.guacamole.protocol.GuacamoleConfiguration;
+import org.apache.guacamole.environment.Environment;
+import org.apache.guacamole.net.auth.Credentials;
+import org.apache.guacamole.protocol.GuacamoleConfiguration;
 
 
 import javax.servlet.http.HttpServletRequest;
