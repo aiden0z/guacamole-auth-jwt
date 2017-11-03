@@ -23,7 +23,7 @@ configuration of remote desktop connections that are authorized using [JSON WEB 
 
 #### First
 
-Use flowing parameters as the payload of the jwt to get auth token from the rest api `/api/token` of guacamole web server.
+Use flowing parameters as the payload of the jwt to get auth token from the rest api `/api/tokens` of guacamole web server.
 
  * `GUAC_ID`  - A connection ID that must be unique per user session, (_required_);
  * `exp` - jwt expired time, (_required_);
@@ -35,7 +35,7 @@ Use flowing parameters as the payload of the jwt to get auth token from the rest
  * `guac.*` - (_optional_) Any other configuration parameters recognized by
     Guacamole can be by prefixing them with `guac.`;
 
-For example, you can use following python code to get token from rest api `/api/token` of guacamole web server.
+For example, you can use following python code to get token from rest api `/api/tokens` of guacamole web server.
 
 ```
 import jwt
@@ -54,10 +54,10 @@ payload = {
 
 jwtToken = jwt.encode(payload, 'secret', 'HS512')
 
-resp = requests.post('https://guacamole-server-domain/api/token', data={'token': jwtToken)
+resp = requests.post('https://guacamole-server-domain/api/tokens', data={'token': jwtToken)
 ```
 
-The json response from `/api/token` like:
+The json response from `/api/tokens` like:
 
 ```
 {
@@ -75,9 +75,13 @@ Use flowing parameters to initialize the websocket connection to guacamole tunne
  * `GUAC_ID` - A connection ID specified in first step;
  * `GUAC_TYPE` - Connection type specified in first step;
  * `GUAC_DATA_SOURCE` - The authentication provider identifier, always is 'jwt';
- * `token` -  Auth token in `/api/token` guacamole rest api response json;
+ * `token` -  Auth token in `/api/tokens` guacamole rest api response json;
 
+ Request tunnel example:
 
+ ```
+ wss://guacamole-server-domain/websocket-tunnel?token=167b2301e6d274be94b94e885cdab5c98b59b6e5a88872620e69391947f39efa&GUAC_DATA_SOURCE=jwt&GUAC_ID=connection_id&GUAC_TYPE=c
+ ```
 
 ## License
 
