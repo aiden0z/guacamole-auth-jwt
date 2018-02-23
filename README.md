@@ -37,7 +37,7 @@ Use flowing parameters as the payload of the jwt to get auth token from the rest
 
 For example, you can use following python code to get token from rest api `/api/tokens` of guacamole web server.
 
-```
+```python
 import jwt
 import requests
 from datetime import datetime, timedelta
@@ -54,7 +54,7 @@ payload = {
 
 jwtToken = jwt.encode(payload, 'secret', 'HS512')
 
-resp = requests.post('https://guacamole-server-domain/api/tokens', data={'token': jwtToken)
+resp = requests.post('https://guacamole-server-domain/api/tokens', data={'token': jwtToken})
 ```
 
 The json response from `/api/tokens` like:
