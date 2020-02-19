@@ -4,6 +4,9 @@ target
 build
 .DS_STORE
 .gradle/
+gradle/
+gradlew
+gradlew.bat
 *.ipr
 *.iws
 *.iml
