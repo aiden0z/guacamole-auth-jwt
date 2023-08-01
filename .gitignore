@@ -4,6 +4,7 @@ target
 build
 .DS_STORE
 .gradle/
+docker/init
 *.ipr
 *.iws
 *.iml

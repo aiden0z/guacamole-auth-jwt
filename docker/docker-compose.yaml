@@ -1,0 +1,39 @@
+version: '3.0'
+
+services:
+  ubuntu-xfce:
+    image: accetto/ubuntu-vnc-xfce
+    restart: always
+    # vnc server default listen at port 5901 with password "headless"
+    ports:
+      - 5901/tcp
+  guacd:
+    image: guacamole/guacd:1.5.2
+    restart: always
+  postgres:
+    environment:
+      PGDATA: /var/lib/postgresql/data/guacamole
+      POSTGRES_DB: guacamole_db
+      POSTGRES_PASSWORD: 'passw0rd'
+      POSTGRES_USER: guacamole_user
+    image: postgres:15.2-alpine
+    restart: always
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+      - ./data:/var/lib/postgresql/data
+  guacamole:
+    depends_on:
+      - guacd
+      - postgres
+    environment:
+      GUACD_HOSTNAME: guacd
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_HOSTNAME: postgres
+      POSTGRESQL_PASSWORD: 'passw0rd'
+      POSTGRESQL_USER: guacamole_user
+    image: guacamole/guacamole:1.5.2
+    links:
+      - guacd
+    ports:
+      - 8080/tcp
+    restart: always
