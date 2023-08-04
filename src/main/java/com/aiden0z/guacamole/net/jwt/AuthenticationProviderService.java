@@ -28,19 +28,13 @@ public class AuthenticationProviderService {
     };
 
     private final byte[] secret_key;
-
-
     protected static final String TOKEN_PARAM = "token";
     protected static final String ID_PARAM = "GUAC_ID";
     protected static final String PARAM_PREFIX = "guac.";
 
-    private final Environment environment;
-
 
     @Inject
     public AuthenticationProviderService(Environment environment) throws GuacamoleException {
-
-        this.environment = environment;
         secret_key = environment.getRequiredProperty(SECRET_KEY).getBytes();
     }
 
@@ -52,15 +46,12 @@ public class AuthenticationProviderService {
             return null;
         }
 
-
         logger.debug("Get jwt token {}", token);
 
         Claims claims;
 
         try {
-
-            claims = Jwts.parser().setSigningKey(secret_key).parseClaimsJws(token).getBody();
-
+            claims = Jwts.parserBuilder().setSigningKey(secret_key).build().parseClaimsJws(token).getBody();
         } catch (JwtException e) {
 
             logger.debug("Parse jwt error {}", e.getMessage());
@@ -85,7 +76,7 @@ public class AuthenticationProviderService {
                 continue;
             }
 
-            if (!key.startsWith(PARAM_PREFIX) || value == null || value.length() == 0) {
+            if (!key.startsWith(PARAM_PREFIX) || value == null || value.isEmpty()) {
                 continue;
             } else if (key.equals(PARAM_PREFIX + "protocol")) {
                 config.setProtocol(value);
@@ -113,7 +104,5 @@ public class AuthenticationProviderService {
         configs.put(id, config);
 
         return configs;
-
     }
-
 }

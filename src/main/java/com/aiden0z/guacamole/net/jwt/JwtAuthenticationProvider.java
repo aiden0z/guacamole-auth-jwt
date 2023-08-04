@@ -22,13 +22,12 @@ public class JwtAuthenticationProvider extends SimpleAuthenticationProvider {
 
     public JwtAuthenticationProvider() throws GuacamoleException {
 
-        environment = new LocalEnvironment();
+        environment = LocalEnvironment.getInstance();
 
         injector = Guice.createInjector(new AbstractModule() {
             @Override
             protected void configure() {
                 bind(Environment.class).toInstance(environment);
-
             }
         });
     }
@@ -36,7 +35,6 @@ public class JwtAuthenticationProvider extends SimpleAuthenticationProvider {
     public JwtAuthenticationProvider(Injector injector, Environment environment) {
         this.environment = environment;
         this.injector = injector;
-
     }
 
     @Override

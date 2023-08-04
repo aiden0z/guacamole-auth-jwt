@@ -83,8 +83,12 @@ Use flowing parameters to initialize the websocket connection to guacamole tunne
 
 ## Release
 
-Version number will be same with guacmaole start from 0.9.14.
+### Version 1.5.2
+* Support Guacamole 1.5.2
+* Support send JWT via HTTP header
 
+### History Versions
+Version number will be same with guacmaole start from 0.9.14.
 * [Version 0.9.14](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/0.9.14/guacamole-auth-jwt-0.9.14.jar) for guacamole 0.9.14;
 * [Version 1.0.1](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/1.0.1/guacamole-auth-jwt-1.0.1.jar) for guacamole 0.9.13-incubating;
 * [Version 1.0.0](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/1.0.0/guacamole-auth-jwt-1.0.0.jar) for guacamole 0.9.9;
