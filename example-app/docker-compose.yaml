@@ -8,7 +8,7 @@ services:
     ports:
       - 5901/tcp
   guacd:
-    image: guacamole/guacd:1.5.2
+    image: guacamole/guacd:1.5.3
     restart: always
   postgres:
     environment:
@@ -31,9 +31,29 @@ services:
       POSTGRESQL_HOSTNAME: postgres
       POSTGRESQL_PASSWORD: 'passw0rd'
       POSTGRESQL_USER: guacamole_user
-    image: guacamole/guacamole:1.5.2
+      # reference https://guacamole.apache.org/doc/1.5.0/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
+      GUACAMOLE_HOME: /tmp/guacamole_home_template
+    image: guacamole/guacamole:1.5.3
+    volumes:
+      # mount guacamole jwt auth plugin
+      # reference https://guacamole.apache.org/doc/1.5.0/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
+      - ./guacamole:/tmp/guacamole_home_template
+      - ../gradle/build/guacamole-auth-jwt.jar:/etc/guacamole/extensions/
     links:
       - guacd
     ports:
-      - 8080/tcp
+      - "8081:8080"
+    restart: always
+  nginx:
+    depends_on:
+      - guacamole
+      - postgres
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    image: nginx
+    links:
+      - guacamole
+    ports:
+      - "8080:80"
     restart: always
