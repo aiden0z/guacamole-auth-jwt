@@ -102,9 +102,9 @@ Use flowing parameters to initialize the websocket connection to guacamole tunne
 
 ## Release
 
-### Version 1.5.3
+### Version 1.5.4
 
-* Support Guacamole 1.5.3.
+* Support Guacamole 1.5.4.
 * Additionally, support send JWT via HTTP header `Guacamole-Auth-Jwt` to get the Guacamole Authorization Token.
 * Add a [react example app](./example-app) to show how to use guacamole-auth-jwt.
 
