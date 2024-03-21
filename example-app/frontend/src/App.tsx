@@ -6,12 +6,10 @@ import Title from 'antd/es/typography/Title';
 import Paragraph from 'antd/es/typography/Paragraph';
 import {createSearchParams, useNavigate } from 'react-router-dom';
 
-import GuacamoleWebsocketParams from './model';
-import { guacamoleJWTSecret, guacamoleTokenAPI } from './conf';
+import { guacamoleJWTSecret, guacamoleTokenAPI } from './Conf';
 import { JWTLocation, fetchGuacamoleToken } from './utils/fetchGuacamoleToken';
 import { SignJWT } from 'jose';
 
-const defaultJWTSecret = "secret";
 
 const layoutStyle: React.CSSProperties = {
   backgroundColor: '#fff',
@@ -29,10 +27,10 @@ type GuacamoleJWTParams = {
 const defaultValues = {
   guacd_host: "guacd:4822",
   hostname: "ubuntu-xfce",
-  protocol: "VNC",
+  protocol: "vnc",
   port: 5901,
   password: "headless",
-  jwt_location: JWTLocation.SearchParams,
+  jwt_location: JWTLocation.Header,
 }
 
 const App: React.FC = () => {
@@ -45,30 +43,27 @@ const App: React.FC = () => {
     const guacId = "guacamole-auth-jwt";
 
     let payload = {
-      "GUAC_ID": guacId,
-      "guac.protocol": values.protocol,
-      "guac.hostname": values.hostname,
-      "guac.port": values.port.toString(),
-      "guac.password": values.password,
+      'GUAC_ID': guacId,
+      'guac.protocol': values.protocol,
+      'guac.hostname': values.hostname,
+      'guac.port': values.port.toString(),
+      'guac.password': values.password,
     };
     
     const secret = new TextEncoder().encode(guacamoleJWTSecret)
     const alg = 'HS256';
-    const jwt = await new SignJWT(payload).setProtectedHeader({alg}).sign(secret);
-    console.log('create guacamole json web token with algorithm:', alg, 'and secret:', guacamoleJWTSecret);
-    console.log('create json web token:', jwt);
+    const jwt = await new SignJWT(payload).setProtectedHeader({alg}).setExpirationTime('1h').sign(secret);
 
     // fetch guacamole token from guacamole-auth-jwt
     const  guacamoleToken = await fetchGuacamoleToken(guacamoleTokenAPI, {token: jwt}, values.jwt_location)
-    // TODO setup nginx proxy to fix the CORS error
-    //                          --> antd dev server localhost:3000
-    //  browser --> nginx:8080 |
-    //                          --> guacamole java application which loaded guacamole-jwt-auth plugin listen at 8080
-    //
 
     navigate({
       pathname: "/console",
-      search: createSearchParams({guac_id: guacId, guac_type: "c", token: guacamoleToken.authToken}).toString()
+      search: createSearchParams({
+        GUAC_DATA_SOURCE: "jwt",
+        GUAC_ID: guacId,
+        GUAC_TYPE: "c",
+        token: guacamoleToken.authToken}).toString()
     });
   };
 
@@ -148,7 +143,6 @@ const App: React.FC = () => {
             >
               <Radio.Group>
                 <Radio value={JWTLocation.Header}>Header</Radio>
-                <Radio value={JWTLocation.SearchParams}>Params</Radio>
                 <Radio value={JWTLocation.Body}>Body</Radio>
               </Radio.Group>
             </Form.Item>

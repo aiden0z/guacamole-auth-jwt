@@ -1,55 +1,34 @@
-import { Col, Layout, Row } from 'antd';
-import { Content, Header } from 'antd/es/layout/layout';
-import Paragraph from 'antd/es/typography/Paragraph';
-import React, { useEffect, useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import GuacamoleWebsocketParams from './model';
+import Guacamole from 'guacamole-common-js';
+import { guacamoleURL } from './Conf';
 
-const Console: React.FC<{}> = () => {
-
+const Console = () => {
     const [searchParams] = useSearchParams();
-
     const consoleRef = useRef(null);
-    let guacID = searchParams.get("GUAC_ID");
-    let guacType= searchParams.get("guac_type");
-    let guacToken = searchParams.get("token");
 
-    let valid = guacID && guacType && guacToken;
 
-    
     useEffect(() => {
-        if (!valid) {
-            return
-        }
         const displayDiv = consoleRef.current;
-        console.log("display div", displayDiv);
-        return () => {
-            console.log("disconnect");
+        if (!displayDiv || !searchParams.get("GUAC_DATA_SOURCE") || !searchParams.get("GUAC_ID") || !searchParams.get("GUAC_TYPE") || !searchParams.get("token")) {
+            return;
         }
-    }, []);
 
-    if (!valid) {
-      return (
-        <>
-        <Row style={{"height": 40}}></Row>
-        <Row>
-            <Col span={6}></Col>
-            <Col span={12} style={{"textAlign": "center"}}>
-                <Paragraph type="danger">
-                    Not found enough guacamole connection params.
-                </Paragraph>
-            </Col>
-            <Col span={6}></Col>
+        const client = new Guacamole.Client(new Guacamole.WebSocketTunnel(guacamoleURL));
+        (displayDiv as HTMLElement).appendChild(client.getDisplay().getElement());
+        console.log("guacamole client connected!");
 
-        </Row>
-        </>
-      )
-    }
+        const params = `GUAC_DATA_SOURCE=${searchParams.get("GUAC_DATA_SOURCE")}&GUAC_ID=${searchParams.get("GUAC_ID")}&GUAC_TYPE=${searchParams.get("GUAC_TYPE")}&token=${searchParams.get("token")}`;
+        client.connect(params);
+
+        return () => {
+            client.disconnect();
+            console.log("guacamole client disconnected!");
+        };
+    }, [consoleRef, searchParams]);
 
     return (
-        <div ref={consoleRef}>
-            will be connect
-        </div>
+        <div ref={consoleRef}></div>
     );
 };
 

@@ -2,7 +2,6 @@ import axios, {AxiosResponse} from "axios"
 
 export enum JWTLocation {
   Header,
-  SearchParams,
   Body
 }
 
@@ -27,12 +26,10 @@ export async function fetchGuacamoleToken(guacamoleTokenAPI: string, data: Guaca
                     "GUACAMOLE-AUTH-JWT": data.token,
                 }
             });
-        } else if (jwtLocation === JWTLocation.SearchParams) {
-            resp = await axios.post<GuacamoleToken>(guacamoleTokenAPI, null, {
-                params: data,
-            });
         } else {
-            resp = await axios.post<GuacamoleToken>(guacamoleTokenAPI, data);
+            const params = new URLSearchParams();
+            params.append("token", data.token)
+            resp = await axios.post<GuacamoleToken>(guacamoleTokenAPI, params);
         }
 
         if (resp.status !== 200) {

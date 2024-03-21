@@ -38,3 +38,5 @@ yarn-error.log*
 # data dir
 example-app/data/
 example-app/init/
+example-app/guacamole/lib
+example-app/guacamole/extensions

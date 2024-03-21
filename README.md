@@ -2,24 +2,45 @@
 
 ## Description
 
-This project is a plugin for [Guacamole](http://guac-dev.org), an HTML5 based
-remote desktop solution supporting VNC/RFB, RDP, and SSH.
+This project is a plugin for [Guacamole](http://guac-dev.org), an HTML5 based remote desktop solution supporting VNC/RFB, RDP, and SSH.
 
-This plugin is an [authentication provider](http://guacamole.incubator.apache.org/doc/gug/custom-auth.html) that enables stateless, on-the-fly
-configuration of remote desktop connections that are authorized using [JSON WEB TOKEN](https://jwt.io/).
+This plugin is an [authentication provider](http://guacamole.incubator.apache.org/doc/gug/custom-auth.html) that enables stateless, on-the-fly configuration of remote desktop connections that are authorized using [JSON WEB TOKEN](https://jwt.io/).
 
-## Deployment & Configuration
+## Deployment
 
 * [deploy guacamole extension](http://guacamole.incubator.apache.org/doc/gug/configuring-guacamole.html)
 * [custom authentication](http://guacamole.incubator.apache.org/doc/gug/custom-auth.html)
 
-`guacamole-auth-jwt` adds a config keys to `guacamole.properties`:
+You should also download all the following dependent jars into the [GUACAMOLE_HOME/lib](https://guacamole.apache.org/doc/gug/configuring-guacamole.html#guacamole-home).
+
+* jackson-annotations-2.12.7.jar
+* jackson-core-2.12.7.jar
+* jackson-databind-2.12.7.1.jar
+* jjwt-api-0.12.5.jar
+* jjwt-impl-0.12.5.jar
+* jjwt-jackson-0.12.5.jar
+
+## Configuration
+
+Add the JWT secret key to `guacamole.properties` file:
 
 * `secret-key` - The key that will be used to verify the jwt signature.
 
+example
+
+```properties
+# jwt secret key for guacamole jwt auth plugin
+secret-key: your-complex-secret-length-must-at-least-256-bits
+```
+
 ## Usage
 
-### First
+### Example App
+
+You can use the [example app](./example-app) to learn how to use this plugin.
+
+
+### Create JWT using Python
 
 Use flowing parameters as the payload of the jwt to get auth token from the rest api `/api/tokens` of guacamole web server.
 
@@ -66,8 +87,6 @@ The json response from `/api/tokens` like:
 }
 ```
 
-### Second
-
 Use flowing parameters to initialize the websocket connection to guacamole tunnel endpoint `/websocket-tunnel`.
 
 * `GUAC_ID` - A connection ID specified in first step;
@@ -83,12 +102,16 @@ Use flowing parameters to initialize the websocket connection to guacamole tunne
 
 ## Release
 
-### Version 1.5.2
-* Support Guacamole 1.5.2
-* Support send JWT via HTTP header
+### Version 1.5.3
+
+* Support Guacamole 1.5.3.
+* Additionally, support send JWT via HTTP header `Guacamole-Auth-Jwt` to get the Guacamole Authorization Token.
+* Add a [react example app](./example-app) to show how to use guacamole-auth-jwt.
 
 ### History Versions
+
 Version number will be same with guacamole start from 0.9.14.
+
 * [Version 0.9.14](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/0.9.14/guacamole-auth-jwt-0.9.14.jar) for guacamole 0.9.14;
 * [Version 1.0.1](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/1.0.1/guacamole-auth-jwt-1.0.1.jar) for guacamole 0.9.13-incubating;
 * [Version 1.0.0](https://github.com/aiden0z/guacamole-auth-jwt/releases/download/1.0.0/guacamole-auth-jwt-1.0.0.jar) for guacamole 0.9.9;

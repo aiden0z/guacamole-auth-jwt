@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@types/guacamole-common-js": "^1.3.2"
+  }
+}

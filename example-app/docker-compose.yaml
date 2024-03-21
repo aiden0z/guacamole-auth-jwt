@@ -8,7 +8,7 @@ services:
     ports:
       - 5901/tcp
   guacd:
-    image: guacamole/guacd:1.5.3
+    image: guacamole/guacd:1.5.4
     restart: always
   postgres:
     environment:
@@ -33,12 +33,11 @@ services:
       POSTGRESQL_USER: guacamole_user
       # reference https://guacamole.apache.org/doc/1.5.0/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
       GUACAMOLE_HOME: /tmp/guacamole_home_template
-    image: guacamole/guacamole:1.5.3
+    image: guacamole/guacamole:1.5.4
     volumes:
       # mount guacamole jwt auth plugin
-      # reference https://guacamole.apache.org/doc/1.5.0/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
+      # reference https://guacamole.apache.org/doc/1.5.4/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
       - ./guacamole:/tmp/guacamole_home_template
-      - ../gradle/build/guacamole-auth-jwt.jar:/etc/guacamole/extensions/
     links:
       - guacd
     ports:
