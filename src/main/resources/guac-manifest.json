@@ -1,7 +1,8 @@
 {
 
-  "guacamoleVersion" : "1.5.4",
+  "guacamoleVersion" : "${guacamoleVersion}",
   "name"      : "Jwt Authentication",
   "namespace" : "guac-jwt",
+  "js" : ["js/tab-isolation.js"],
   "authProviders" : ["com.aiden0z.guacamole.net.jwt.JwtAuthenticationProvider"]
 }

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class AuthenticationProviderService {
@@ -38,78 +39,92 @@ public class AuthenticationProviderService {
 
     @Inject
     public AuthenticationProviderService(Environment environment) throws GuacamoleException {
-        logger.debug("found secret key: {}", environment.getRequiredProperty(SECRET_KEY));
-        secretKey = Keys.hmacShaKeyFor(environment.getRequiredProperty(SECRET_KEY).getBytes());
+        secretKey = Keys.hmacShaKeyFor(environment.getRequiredProperty(SECRET_KEY).getBytes(StandardCharsets.UTF_8));
     }
 
     public Map<String, GuacamoleConfiguration> getAuthorizedConfigurations(HttpServletRequest request) {
 
+        if (request == null) {
+            return null;
+        }
         String token = getToken(request);
 
         if (token == null || token.isEmpty()) {
-            logger.error("Not found jwt.");
+            logger.debug("No JWT supplied; declining authentication.");
             return null;
         }
 
-        logger.debug("Get jwt {}", token);
-
-        Claims claims;
 
         try {
-            claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
-        } catch (JwtException e) {
-            logger.error("Parse jwt error: {}", e.getMessage());
-            return null;
-        }
-
-        logger.debug("Get claims {}", claims.toString());
-
-        GuacamoleConfiguration config = new GuacamoleConfiguration();
-
-        if (claims.getExpiration() == null) {
-            logger.error("JWT authentication failed, the JWT must have expiration field.");
-            return null;
-        }
-
-        for (String key : claims.keySet()) {
-            String value;
-            try {
-                value = claims.get(key, String.class);
-            } catch (JwtException e) {
-
-                continue;
+            Claims claims = Jwts.parser().verifyWith(secretKey).build()
+                    .parseSignedClaims(token).getPayload();
+            if (claims.getExpiration() == null) {
+                logger.debug("JWT rejected: expiration is required.");
+                return null;
             }
 
-            if (!key.startsWith(PARAM_PREFIX) || value == null || value.isEmpty()) {
-                continue;
-            } else if (key.equals(PARAM_PREFIX + "protocol")) {
-                config.setProtocol(value);
-            } else {
-                config.setParameter(key.substring(PARAM_PREFIX.length()), value);
+            String shareId = sharingId(claims, "GUAC_SHARE_ID");
+            String joinId = sharingId(claims, "GUAC_JOIN_ID");
+            if (shareId != null && joinId != null) {
+                return null;
+            }
+            AuthorizedConfiguration config = new AuthorizedConfiguration(
+                    shareId, joinId, claims.getExpiration().getTime());
+            for (String key : claims.keySet()) {
+                if (!key.startsWith(PARAM_PREFIX)) {
+                    continue;
+                }
+                if (joinId != null && !key.equals("guac.read-only")) {
+                    return null;
+                }
+                String value = claims.get(key, String.class);
+                if (joinId != null && !"true".equals(value) && !"false".equals(value)) {
+                    return null;
+                }
+                if (value == null || value.isEmpty()) {
+                    continue;
+                }
+                if (key.equals(PARAM_PREFIX + "protocol")) {
+                    config.setProtocol(value);
+                } else {
+                    config.setParameter(key.substring(PARAM_PREFIX.length()), value);
+                }
+            }
+            if (joinId != null) {
+                if (config.getParameter("read-only") == null) {
+                    config.setParameter("read-only", "true");
+                }
+            }
+            else if (config.getParameter("hostname") == null || config.getProtocol() == null) {
+                logger.debug("JWT rejected: hostname and protocol are required.");
+                return null;
             }
 
-        }
-
-        if (config.getParameter("hostname") == null) {
-            logger.error("JWT authentication failed, the JWT payload must have hostname field.");
+            String id = claims.get(ID_PARAM, String.class);
+            if (id == null) {
+                id = "DEFAULT"; // Compatibility with releases through 1.5.4.
+            } else if (id.trim().isEmpty()) {
+                return null;
+            }
+            Map<String, GuacamoleConfiguration> configs = new HashMap<>();
+            configs.put(id, config);
+            return configs;
+        } catch (JwtException | IllegalArgumentException e) {
+            // Exception messages can include claims. Log only the error category.
+            logger.debug("JWT rejected: {}", e.getClass().getSimpleName());
             return null;
         }
+    }
 
-        if (config.getProtocol() == null) {
-            logger.error("JWT authentication failed, the JWT payload must have protocol field.");
+    private String sharingId(Claims claims, String name) {
+        if (!claims.containsKey(name)) {
             return null;
         }
-
-        String id = claims.get(ID_PARAM, String.class);
-        if (id == null) {
-            logger.error("JWT authentication failed, the JWT payload must have GUAC_ID field.");
-            id = "DEFAULT";
+        String value = claims.get(name, String.class);
+        if (value == null || !value.matches("[A-Za-z0-9_-]{22,128}")) {
+            throw new IllegalArgumentException("Invalid sharing identifier");
         }
-
-        Map<String, GuacamoleConfiguration> configs = new HashMap<>();
-        configs.put(id, config);
-
-        return configs;
+        return value;
     }
 
     private String getToken(HttpServletRequest request) {

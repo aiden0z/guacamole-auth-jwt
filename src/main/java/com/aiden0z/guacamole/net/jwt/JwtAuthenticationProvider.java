@@ -18,6 +18,7 @@ import java.util.Map;
 
 public class JwtAuthenticationProvider extends SimpleAuthenticationProvider {
 
+    private final SharedConnectionRegistry sharedConnections = new SharedConnectionRegistry();
     private final Injector injector;
 
     private final Environment environment;
@@ -53,4 +54,21 @@ public class JwtAuthenticationProvider extends SimpleAuthenticationProvider {
 
     }
 
+    @Override
+    public org.apache.guacamole.net.auth.UserContext getUserContext(
+            org.apache.guacamole.net.auth.AuthenticatedUser user) throws GuacamoleException {
+        Map<String, GuacamoleConfiguration> configs = getAuthorizedConfigurations(user.getCredentials());
+        if (configs == null) return null;
+        Map<String, org.apache.guacamole.net.auth.Connection> connections = new java.util.HashMap<>();
+        for (Map.Entry<String, GuacamoleConfiguration> entry : configs.entrySet()) {
+            connections.put(entry.getKey(), new ManagedConnection(entry.getKey(),
+                    (AuthorizedConfiguration) entry.getValue(), environment, sharedConnections));
+        }
+        return new org.apache.guacamole.net.auth.simple.SimpleUserContext(this, user.getIdentifier(), configs, true) {
+            @Override public org.apache.guacamole.net.auth.Directory<org.apache.guacamole.net.auth.Connection>
+                    getConnectionDirectory() {
+                return new org.apache.guacamole.net.auth.simple.SimpleDirectory<>(connections);
+            }
+        };
+    }
 }

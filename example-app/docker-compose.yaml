@@ -1,58 +1,32 @@
-version: '3.0'
-
 services:
-  ubuntu-xfce:
-    image: accetto/ubuntu-vnc-xfce
-    restart: always
-    # vnc server default listen at port 5901 with password "headless"
-    ports:
-      - 5901/tcp
-  guacd:
-    image: guacamole/guacd:1.5.4
-    restart: always
-  postgres:
+  desktop:
+    build: ./desktop
     environment:
-      PGDATA: /var/lib/postgresql/data/guacamole
-      POSTGRES_DB: guacamole_db
-      POSTGRES_PASSWORD: 'passw0rd'
-      POSTGRES_USER: guacamole_user
-    image: postgres:15.2-alpine
-    restart: always
-    volumes:
-      - ./init:/docker-entrypoint-initdb.d
-      - ./data:/var/lib/postgresql/data
+      DEMO_VNC_PASSWORD: ${DEMO_VNC_PASSWORD:?Run python3 setup.py first}
+  guacd:
+    image: registry-1.docker.io/guacamole/guacd:1.6.0
   guacamole:
-    depends_on:
-      - guacd
-      - postgres
+    image: registry-1.docker.io/guacamole/guacamole:1.6.0
+    depends_on: [guacd]
     environment:
       GUACD_HOSTNAME: guacd
-      POSTGRESQL_DATABASE: guacamole_db
-      POSTGRESQL_HOSTNAME: postgres
-      POSTGRESQL_PASSWORD: 'passw0rd'
-      POSTGRESQL_USER: guacamole_user
-      # reference https://guacamole.apache.org/doc/1.5.0/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
-      GUACAMOLE_HOME: /tmp/guacamole_home_template
-    image: guacamole/guacamole:1.5.4
+      SECRET_KEY: ${JWT_SECRET_KEY:?Run python3 setup.py first}
     volumes:
-      # mount guacamole jwt auth plugin
-      # reference https://guacamole.apache.org/doc/1.5.4/gug/guacamole-docker.html#custom-extensions-and-guacamole-home
-      - ./guacamole:/tmp/guacamole_home_template
-    links:
-      - guacd
-    ports:
-      - "8081:8080"
-    restart: always
+      - ./guacamole/extensions/guacamole-auth-jwt-1.6.0.jar:/etc/guacamole/extensions/guacamole-auth-jwt-1.6.0.jar:ro
+      - ./guacamole/guacamole.properties:/etc/guacamole/guacamole.properties:ro
+      - ./guacamole/logback.xml:/etc/guacamole/logback.xml:ro
+  broker:
+    build: ./backend
+    depends_on: [guacamole]
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Run python3 setup.py first}
+      DEMO_ACCESS_TOKEN: ${DEMO_ACCESS_TOKEN:?Run python3 setup.py first}
+      DEMO_VNC_PASSWORD: ${DEMO_VNC_PASSWORD:?Run python3 setup.py first}
   nginx:
-    depends_on:
-      - guacamole
-      - postgres
+    image: registry-1.docker.io/library/nginx:stable-alpine
+    depends_on: [guacamole, broker]
     volumes:
-      - ./frontend/build:/usr/share/nginx/html
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-    image: nginx
-    links:
-      - guacamole
+      - ./frontend/build:/usr/share/nginx/html/example-app:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "8080:80"
-    restart: always
+      - "127.0.0.1:${DEMO_HTTP_PORT:-8080}:80"

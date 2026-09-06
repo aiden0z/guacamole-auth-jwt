@@ -7,8 +7,8 @@
         </encoder>
     </appender>
 
-    <!-- Log at DEBUG level -->
-    <root level="debug">
+    <!-- Log at INFO level -->
+    <root level="info">
         <appender-ref ref="GUAC-DEBUG"/>
     </root>
 </configuration>

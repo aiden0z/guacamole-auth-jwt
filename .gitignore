@@ -40,3 +40,6 @@ example-app/data/
 example-app/init/
 example-app/guacamole/lib
 example-app/guacamole/extensions
+
+example-app/.env
+__pycache__/
