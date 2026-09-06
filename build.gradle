@@ -1,11 +1,10 @@
 plugins {
-    id "java"
-    id "java-library"
+    id 'java-library'
 }
 
 group = 'com.aiden0z.guacamole-auth-jwt'
-version = '1.5.4'
-description = """ guacamole custome authentication based on JSON WEB TOKEN """
+version = '1.6.0'
+description = 'Stateless JWT authentication for Apache Guacamole'
 
 java {
     toolchain {
@@ -13,20 +12,53 @@ java {
     }
 }
 
-repositories {
-     maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
-     maven { url "https://repo.maven.apache.org/maven2" }
-}
+repositories { mavenCentral() }
 
 dependencies {
-    implementation "org.apache.guacamole:guacamole-ext:1.5.4"
-    implementation "javax.servlet:servlet-api:2.5"
-    implementation "com.google.inject:guice:7.0.0"
-    implementation "com.google.inject.extensions:guice-testlib:7.0.0"
-    api "io.jsonwebtoken:jjwt-api:0.12.5"
-    runtimeOnly "io.jsonwebtoken:jjwt-jackson:0.12.5"
-    runtimeOnly "io.jsonwebtoken:jjwt-impl:0.12.5"
+    // These APIs are owned and supplied by Guacamole/Tomcat, never bundled.
+    compileOnly 'org.apache.guacamole:guacamole-ext:1.6.0'
+    compileOnly 'javax.servlet:servlet-api:2.5'
+    compileOnly 'com.google.inject:guice:5.1.0'
+    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    // Avoid adding a second Jackson stack to Guacamole's classloader.
+    runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.13.0'
+    runtimeOnly 'com.google.code.gson:gson:2.13.2'
 
-    testImplementation "junit:junit:4.13.2"
-    testImplementation "org.mockito:mockito-core:4.11.0"
+    testImplementation 'org.apache.guacamole:guacamole-ext:1.6.0'
+    testImplementation 'javax.servlet:servlet-api:2.5'
+    testImplementation 'com.google.inject:guice:5.1.0'
+    testImplementation 'ch.qos.logback:logback-classic:1.3.16'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+def guacamoleVersion = project.version.toString()
+tasks.named('processResources') {
+    inputs.property('guacamoleVersion', guacamoleVersion)
+    filesMatching('guac-manifest.json') { expand(guacamoleVersion: guacamoleVersion) }
+}
+
+tasks.named('jar') {
+    // Guacamole loads dependency JARs from the root of an extension JAR.
+    from(configurations.runtimeClasspath)
+    from('LICENSE')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.register('stageExample', Copy) {
+    dependsOn tasks.named('jar')
+    from(tasks.named('jar'))
+    into 'example-app/guacamole/extensions'
+}
+
+tasks.named('test') {
+    if (project.hasProperty('testJavaVersion')) {
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(project.property('testJavaVersion').toString().toInteger())
+        }
+    }
 }

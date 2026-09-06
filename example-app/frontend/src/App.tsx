@@ -1,168 +1,59 @@
-import React from 'react';
-import {Row, Col, Layout, Radio, InputNumber} from 'antd';
-import { Button, Form, Input } from 'antd';
-import { Content, Footer, Header } from 'antd/es/layout/layout';
-import Title from 'antd/es/typography/Title';
-import Paragraph from 'antd/es/typography/Paragraph';
-import {createSearchParams, useNavigate } from 'react-router-dom';
-
-import { guacamoleJWTSecret, guacamoleTokenAPI } from './Conf';
-import { JWTLocation, fetchGuacamoleToken } from './utils/fetchGuacamoleToken';
-import { SignJWT } from 'jose';
-
-
-const layoutStyle: React.CSSProperties = {
-  backgroundColor: '#fff',
-};
-
-type GuacamoleJWTParams = {
-  protocol?: string;
-  hostname?: string;
-  port: number,
-  username?: string;
-  password?: string;
-  jwt_location: JWTLocation;
-};
-
-const defaultValues = {
-  guacd_host: "guacd:4822",
-  hostname: "ubuntu-xfce",
-  protocol: "vnc",
-  port: 5901,
-  password: "headless",
-  jwt_location: JWTLocation.Header,
-}
+import React, { useState } from 'react';
+import { Button, Form, Input, Radio, Typography, Alert, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { openOfficial, saveSession } from './session';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
+  const official = new URLSearchParams(window.location.search).get('launch') === 'official';
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const onFinish = async (values: GuacamoleJWTParams) => {
-
-    console.log('found guacamole connection params:', values);
-
-    const guacId = "guacamole-auth-jwt";
-
-    let payload = {
-      'GUAC_ID': guacId,
-      'guac.protocol': values.protocol,
-      'guac.hostname': values.hostname,
-      'guac.port': values.port.toString(),
-      'guac.password': values.password,
-    };
-    
-    const secret = new TextEncoder().encode(guacamoleJWTSecret)
-    const alg = 'HS256';
-    const jwt = await new SignJWT(payload).setProtectedHeader({alg}).setExpirationTime('1h').sign(secret);
-
-    // fetch guacamole token from guacamole-auth-jwt
-    const  guacamoleToken = await fetchGuacamoleToken(guacamoleTokenAPI, {token: jwt}, values.jwt_location)
-
-    navigate({
-      pathname: "/console",
-      search: createSearchParams({
-        GUAC_DATA_SOURCE: "jwt",
-        GUAC_ID: guacId,
-        GUAC_TYPE: "c",
-        token: guacamoleToken.authToken}).toString()
-    });
+  const connect = async (values: { accessToken: string; jwtLocation: string }) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/example-api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${values.accessToken}` },
+        body: JSON.stringify({ connectionId: 'demo', jwtLocation: values.jwtLocation, shareable: !official }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Connection authorization failed');
+      if (official) openOfficial(result);
+      else { saveSession(result); navigate('/console'); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to connect');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return  (
-  <Layout>
-    <Header style={layoutStyle}>
-      <Row justify="space-around" align="middle">
-        <Col span={6}></Col>
-        <Col span={12}>
-          <Title level={5} style={{textAlign: "center"}} className="responsive-title">Guacamole JWT Authentication Example APP</Title>
-        </Col>
-        <Col span={6}></Col>
-      </Row>
-    </Header>
-    <Content style={layoutStyle}>
-      <Row justify="center" align="middle">
-        <Col span={6}></Col>
-        <Col span={12}>
-          <Paragraph style={{width: "100%", textAlign: "center", marginBottom: 40}}>
-            Default JWT Algorithm: HS256, secret: secret
-          </Paragraph>
-          <Form
-            name="basic"
-            labelCol={{ span: 8 }}
-            wrapperCol={{ span: 16 }}
-            style={{ maxWidth: 600, margin: "0 auto"}}
-            initialValues={defaultValues}
-            onFinish={onFinish}
-            autoComplete="off"
-          >
-            <Form.Item<GuacamoleJWTParams>
-              label="Protocol"
-              name="protocol"
-              rules={[{required: true}]}
-            >
-              <Input
-                disabled
-              />
-            </Form.Item>
-
-            <Form.Item<GuacamoleJWTParams>
-              label="Hostname"
-              name="hostname"
-              rules={[{ required: true, message: 'Please input the host to connect!' }]}
-            >
-              <Input/>
-            </Form.Item>
-
-            <Form.Item<GuacamoleJWTParams>
-              label="Port"
-              name="port"
-              rules={[{ required: true, message: 'Please input the host to connect!' }]}
-            >
-              <InputNumber min={1} max={65535}/>
-            </Form.Item>
-
-            <Form.Item<GuacamoleJWTParams>
-              label="Username"
-              name="username"
-              rules={[{ required: false, message: 'Please input the username!' }]}
-            >
-              <Input/>
-            </Form.Item>
-
-            <Form.Item<GuacamoleJWTParams>
-              label="Password"
-              name="password"
-              rules={[{ required: true, message: 'Please input the password!' }]}
-            >
-              <Input.Password />
-            </Form.Item>
-
-            <Form.Item<GuacamoleJWTParams>
-              label="JWT Location"
-              name="jwt_location"
-              rules={[{ required: true}]}
-            >
-              <Radio.Group>
-                <Radio value={JWTLocation.Header}>Header</Radio>
-                <Radio value={JWTLocation.Body}>Body</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-              <Button type="primary" htmlType="submit">
-                Connect
-              </Button>
-            </Form.Item>
-
-          </Form>
-        </Col>
-        <Col span={6}></Col>
-      </Row>
-    </Content>
-    <Footer style={layoutStyle}>
-    </Footer>
-    
-</Layout>
-  )
+  return (
+    <main style={{ maxWidth: 560, margin: '64px auto', padding: 24 }}>
+      <Typography.Title level={2}>Guacamole JWT example</Typography.Title>
+      <Typography.Paragraph>
+        Connect to the configured demo desktop. The server authorizes the connection;
+        signing keys and desktop credentials stay on the server.
+      </Typography.Paragraph>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <a href="/example-app/?launch=embedded" target="_blank" rel="noopener noreferrer">New independent Console</a>
+        <a href="/example-app/?launch=official" target="_blank" rel="noopener noreferrer">New independent official UI</a>
+      </Space>
+      <Typography.Paragraph>Each new window requires its own authorization. Browser Duplicate Tab is not an independent login.</Typography.Paragraph>
+      <Form layout="vertical" initialValues={{ jwtLocation: 'header' }} onFinish={connect}>
+        <Form.Item label="Demo access token" name="accessToken" rules={[{ required: true }]}>
+          <Input.Password autoComplete="off" />
+        </Form.Item>
+        <Form.Item label="Server-to-Guacamole JWT transport" name="jwtLocation">
+          <Radio.Group><Radio value="header">Header</Radio><Radio value="body">Form body</Radio></Radio.Group>
+        </Form.Item>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {error && <Alert type="error" message={error} role="alert" />}
+          <Button type="primary" htmlType="submit" loading={busy}>{official ? 'Connect in official Guacamole UI' : 'Connect to demo desktop'}</Button>
+        </Space>
+      </Form>
+    </main>
+  );
 };
-
 export default App;

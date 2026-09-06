@@ -152,4 +152,140 @@ public class JwtAuthenticationProviderTest {
 
     }
 
+
+    private Map<String, GuacamoleConfiguration> authorize(Map<String, Object> claims, boolean header) {
+        String token = Jwts.builder().claims(claims)
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), Jwts.SIG.HS512).compact();
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader(AuthenticationProviderService.TOKEN_HEADER_NAME)).thenReturn(header ? token : null);
+        when(request.getParameter(AuthenticationProviderService.TOKEN_PARAMETER_NAME)).thenReturn(header ? null : token);
+        return new JwtAuthenticationProvider(getInjector(), environment)
+                .getAuthorizedConfigurations(new Credentials("", "", request));
+    }
+
+    private Map<String, Object> validClaims() {
+        Map<String, Object> claims = new HashMap<>(getClaims());
+        claims.put("exp", new Date(System.currentTimeMillis() + 60000));
+        return claims;
+    }
+
+    @Test
+    public void headerAuthenticatesWithoutFormToken() {
+        Assert.assertNotNull(authorize(validClaims(), true));
+    }
+
+    @Test
+    public void missingExpirationIsRejected() {
+        Map<String, Object> claims = validClaims();
+        claims.remove("exp");
+        Assert.assertNull(authorize(claims, false));
+    }
+
+    @Test
+    public void wrongIdTypeIsRejectedWithoutThrowing() {
+        Map<String, Object> claims = validClaims();
+        claims.put("GUAC_ID", 123);
+        Assert.assertNull(authorize(claims, false));
+    }
+
+    @Test
+    public void emptyIdIsRejected() {
+        Map<String, Object> claims = validClaims();
+        claims.put("GUAC_ID", " ");
+        Assert.assertNull(authorize(claims, false));
+    }
+
+    @Test
+    public void missingIdRetainsLegacyDefault() {
+        Map<String, Object> claims = validClaims();
+        claims.remove("GUAC_ID");
+        Assert.assertTrue(authorize(claims, false).containsKey("DEFAULT"));
+    }
+
+    @Test
+    public void malformedConnectionParameterIsRejectedInsteadOfSilentlyDropped() {
+        Map<String, Object> claims = validClaims();
+        claims.put("guac.port", 5901);
+        Assert.assertNull(authorize(claims, false));
+    }
+
+    @Test
+    public void absentRequestDeclinesAuthentication() {
+        Assert.assertNull(new JwtAuthenticationProvider(getInjector(), environment)
+                .getAuthorizedConfigurations(mock(Credentials.class)));
+    }
+
+    @Test
+    public void invalidHeaderDoesNotFallBackToValidBody() {
+        String token = Jwts.builder().claims(validClaims())
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), Jwts.SIG.HS512).compact();
+        HttpServletRequest request = getHttpServletRequest(token);
+        when(request.getHeader(AuthenticationProviderService.TOKEN_HEADER_NAME)).thenReturn("invalid");
+        Assert.assertNull(new JwtAuthenticationProvider(getInjector(), environment)
+                .getAuthorizedConfigurations(new Credentials("", "", request)));
+    }
+
+    @Test
+    public void debugLogsDoNotDiscloseKeyTokenOrCredentials() throws Exception {
+        ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(AuthenticationProviderService.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        ch.qos.logback.classic.Level previous = logger.getLevel();
+        logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        logger.addAppender(appender);
+        try {
+            Map<String, Object> claims = validClaims();
+            claims.put("guac.password", "sensitive-remote-password-marker");
+            String token = Jwts.builder().claims(claims)
+                    .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), Jwts.SIG.HS512).compact();
+            AuthenticationProviderService service = new AuthenticationProviderService(environment);
+            Assert.assertNotNull(service.getAuthorizedConfigurations(getHttpServletRequest(token)));
+            claims.put("exp", new Date(System.currentTimeMillis() - 60000));
+            String expired = Jwts.builder().claims(claims)
+                    .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), Jwts.SIG.HS512).compact();
+            Assert.assertNull(service.getAuthorizedConfigurations(getHttpServletRequest(expired)));
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : appender.list) {
+                String message = event.getFormattedMessage();
+                Assert.assertFalse(message.contains(secretKey));
+                Assert.assertFalse(message.contains(token));
+                Assert.assertFalse(message.contains(expired));
+                Assert.assertFalse(message.contains("sensitive-remote-password-marker"));
+            }
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previous);
+            appender.stop();
+        }
+    }
+    @Test
+    public void sharedJoinNeedsNoRemoteCredentialsAndDefaultsReadOnly() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("GUAC_ID", "guest");
+        claims.put("GUAC_JOIN_ID", "0123456789abcdefghijklmnop");
+        claims.put("exp", new Date(System.currentTimeMillis() + 60000));
+        Map<String, GuacamoleConfiguration> configs = authorize(claims, true);
+        Assert.assertNotNull(configs);
+        Assert.assertEquals("true", configs.get("guest").getParameter("read-only"));
+        Assert.assertNull(configs.get("guest").getConnectionID());
+    }
+
+    @Test
+    public void sharedJoinRejectsTargetOverridesAndAmbiguousRoles() {
+        Map<String, Object> claims = validClaims();
+        claims.put("GUAC_JOIN_ID", "0123456789abcdefghijklmnop");
+        Assert.assertNull(authorize(claims, true));
+        claims.put("GUAC_SHARE_ID", "abcdefghijklmnop0123456789");
+        Assert.assertNull(authorize(claims, false));
+    }
+
+    @Test
+    public void sharingRejectsMalformedIds() {
+        Map<String, Object> claims = validClaims();
+        claims.put("GUAC_SHARE_ID", "demo");
+        Assert.assertNull(authorize(claims, true));
+        claims.put("GUAC_SHARE_ID", 123);
+        Assert.assertNull(authorize(claims, true));
+    }
 }

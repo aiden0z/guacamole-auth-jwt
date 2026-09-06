@@ -1,0 +1,6 @@
+# Test-only: leave room for deliberate invalid JWT cases without an IP ban
+# masking the expected 403 responses. The default demo keeps upstream defaults.
+services:
+  guacamole:
+    environment:
+      BAN_MAX_INVALID_ATTEMPTS: '100'
